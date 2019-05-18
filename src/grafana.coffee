@@ -214,6 +214,104 @@ module.exports = (robot) ->
     else
       sendRobotResponse msg, title, imageUrl, link
 
+  # Get a specific dashboard with options
+  robot.respond /(?:grafana|graph|graf) (?:render) ([A-Za-z0-9\-\:_]+)(.*)?/i, (msg) ->
+    slug = msg.match[1].trim()
+    remainder = msg.match[2]
+    timespan = {
+      from: "now-#{grafana_query_time_range}"
+      to: 'now'
+    }
+    variables = ''
+    template_params = []
+    visualPanelId = false
+    apiPanelId = false
+    pname = false
+    imagesize =
+      width: process.env.HUBOT_GRAFANA_DEFAULT_WIDTH or 1000
+      height: process.env.HUBOT_GRAFANA_DEFAULT_HEIGHT or 500
+
+
+    # Check if we have any extra fields
+    if remainder && remainder.trim() != ''
+      # The order we apply non-variables in
+      timeFields = ['from', 'to']
+
+      for part in remainder.trim().split ' '
+        # Check if it's a variable or part of the timespan
+        if part.indexOf('=') >= 0
+          #put imagesize stuff into its own dict
+          if part.split('=')[0] of imagesize
+            imagesize[part.split('=')[0]] = part.split('=')[1]
+            continue
+
+          variables = "#{variables}&var-#{part}"
+          template_params.push { "name": part.split('=')[0], "value": part.split('=')[1] }
+
+        # Only add to the timespan if we haven't already filled out from and to
+        else if timeFields.length > 0
+          timespan[timeFields.shift()] = part.trim()
+
+    robot.logger.debug msg.match
+    robot.logger.debug timespan
+    robot.logger.debug variables
+    robot.logger.debug template_params
+    robot.logger.debug visualPanelId
+    robot.logger.debug apiPanelId
+    robot.logger.debug pname
+
+    # Call the API to get information about this dashboard
+    callGrafana "dashboards/db/#{slug}", (dashboard) ->
+      robot.logger.debug dashboard
+
+      # Check dashboard information
+      if !dashboard
+        return sendError 'An error ocurred. Check your logs for more details.', msg
+      if dashboard.message
+        return sendError dashboard.message, msg
+
+      # Defaults
+      apiEndpoint = 'dashboard-solo'
+      data = dashboard.dashboard
+
+      #console.log data
+
+      # Handle refactor done for version 5.0.0+
+      if dashboard.dashboard.panels
+        # Concept of "rows" was replaced by coordinate system
+        data.rows = [dashboard.dashboard]
+
+      # Handle empty dashboard
+      if !data.rows?
+        return sendError 'Dashboard empty.', msg
+
+      uid = data.uid
+
+      # Support for templated dashboards
+      robot.logger.debug data.templating.list
+      if data.templating.list
+        template_map = []
+        for template in data.templating.list
+          robot.logger.debug template
+          continue unless template.current
+          for _param in template_params
+            if template.name == _param.name
+              template_map['$' + template.name] = _param.value
+            else
+              template_map['$' + template.name] = template.current.text
+
+
+       # Build links for message sending
+       title = formatTitleWithTemplate(data.title, template_map)
+       imageUrl = "#{grafana_host}/render/d/#{uid}/#{slug}/?width=#{imagesize.width}&height=#{imagesize.height}&from=#{timespan.from}&to=#{timespan.to}#{variables}"
+       link = "#{grafana_host}/dashboard/db/#{slug}/from=#{timespan.from}&to=#{timespan.to}#{variables}"
+
+       console.log imageUrl
+
+       sendDashboardChart msg, title, imageUrl, link
+
+
+
   # Get a list of available dashboards
   robot.respond /(?:grafana|graph|graf) list\s?(.+)?/i, (msg) ->
     if msg.match[1]
