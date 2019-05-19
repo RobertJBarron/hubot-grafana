@@ -153,20 +153,19 @@ describe 'grafana v5', ->
         [ 'hubot', "What's New: http://play.grafana.org/render/dashboard-solo/db/grafana-play-home/?panelId=8&width=2500&height=700&from=now-6h&to=now - http://play.grafana.org/dashboard/db/grafana-play-home/?panelId=8&fullscreen&from=now-6h&to=now"]
       ]
 
+  context 'ask hubot to render an entire dashboard', ->
+    beforeEach (done) ->
+      nock('http://play.grafana.org')
+        .get('/api/dashboards/db/grafana-play-home')
+        .replyWithFile(200, __dirname + '/fixtures/v5/dashboard-grafana-play.json')
+      room.user.say 'alice', 'hubot graf render grafana-play-home'
+      setTimeout done, 100
 
-  #context 'ask hubot to render an entire dashboard', ->
-  #beforeEach (done) ->
-  # nock('http://play.grafana.org')
-  #   .get('/render/d/000000109/the-four-golden-signals?orgId=1&from=now-6h&to=now&height=700')
-  #   .replyWithFile(200, __dirname + '/fixtures/v5/dashboard-grafana-render.json')
-  # room.user.say 'alice', 'hubot graf render the-four-golden-signals'
-  # setTimeout done, 100
-
-  #it 'hubot should respond with an entire rendered dashboard', ->
-  # expect(room.messages).to.eql [
-  #    [ 'alice', 'hubot graf render the-four-golden-signals' ]
-  #    [ 'hubot',  "What's New: http://play.grafana.org/render/dashboard-solo/db/grafana-play-home/?panelId=8&width=2500&height=700&from=now-6h&to=now - http://play.grafana.org/dashboard/db/grafana-play-home/?panelId=8&fullscreen&from=now-6h&to=now"]
-  # ]
+    it 'hubot should respond with an entire rendered dashboard', ->
+      expect(room.messages).to.eql [
+         [ 'alice', 'hubot graf render grafana-play-home' ]
+         [ 'hubot',  "Grafana Play Home: http://play.grafana.org/render/d/000000012/grafana-play-home/?width=1000&height=500&from=now-6h&to=now - http://play.grafana.org/dashboard/db/grafana-play-home/from=now-6h&to=now"]
+      ]
 
   context 'ask hubot for templated dashboard', ->
     beforeEach (done) ->
