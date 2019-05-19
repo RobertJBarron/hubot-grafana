@@ -274,8 +274,6 @@ module.exports = (robot) ->
       apiEndpoint = 'dashboard-solo'
       data = dashboard.dashboard
 
-      #console.log data
-
       # Handle refactor done for version 5.0.0+
       if dashboard.dashboard.panels
         # Concept of "rows" was replaced by coordinate system
@@ -300,17 +298,12 @@ module.exports = (robot) ->
             else
               template_map['$' + template.name] = template.current.text
 
-
        # Build links for message sending
        title = formatTitleWithTemplate(data.title, template_map)
        imageUrl = "#{grafana_host}/render/d/#{uid}/#{slug}/?width=#{imagesize.width}&height=#{imagesize.height}&from=#{timespan.from}&to=#{timespan.to}#{variables}"
        link = "#{grafana_host}/dashboard/db/#{slug}/from=#{timespan.from}&to=#{timespan.to}#{variables}"
 
-       console.log imageUrl
-
        sendDashboardChart msg, title, imageUrl, link
-
-
 
   # Get a list of available dashboards
   robot.respond /(?:grafana|graph|graf) list\s?(.+)?/i, (msg) ->
